@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: enbuild-enbuild-service-scanner
+  namespace: dev-enbuild
+spec:
+  schedule: "10 8 15 3 *" # This corresponds to 1:40 PM IST on March 15th every year
+  # schedule: "10 8 * * 4" # This corresponds to 1:40 PM IST on Thursdays
+  # schedule: "0 */1 * * *" # This corresponds to every hour
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: scanner
+            app.kubernetes.io/component: scanner
+            app.kubernetes.io/name: enbuild
+            app.kubernetes.io/instance: enbuild
+        spec:
+          containers:
+          - name: enbuild-service-scanner
+            image: ghcr.io/junaid18183/service-screener-v2:20241107
+            imagePullPolicy: Always
+            env:
+            - name: AWS_REGION
+              value: us-east-1
+            envFrom:
+            - secretRef:
+                name: aws-details
+            command: ["sleep", "3600"]
+            # args: ["-r", "us-east-1"]
+            volumeMounts:
+            - name: scanner-storage
+              mountPath: /app/aws
+          volumes:
+          - name: scanner-storage
+            persistentVolumeClaim:
+              claimName: scanner-pvc
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scanner-pvc
+  namespace: dev-enbuild
+spec:
+  accessModes:
+    - ReadWriteOnce
+    # - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi

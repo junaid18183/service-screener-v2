@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-scanner-s3-sync
+  namespace: dev-enbuild
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aws-cli
+  template:
+    metadata:
+      labels:
+        app: aws-cli
+    spec:
+      containers:
+      - name: aws-cli-container
+        image: amazon/aws-cli:latest
+        # Use 'exec' form of the command to ensure proper signal handling
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            aws s3 sync s3://enbuild-aws-scanner /app/aws-scanner/ &&
+            echo "Sync completed successfully"
+        volumeMounts:
+        - name: scanner-storage
+          mountPath: /app/aws-scanner/
+        env:
+        - name: AWS_REGION
+          value: us-east-1
+        envFrom:
+        - secretRef:
+            name: aws-details
+      volumes:
+      - name: scanner-storage
+        persistentVolumeClaim:
+          claimName: scanner-pvc
